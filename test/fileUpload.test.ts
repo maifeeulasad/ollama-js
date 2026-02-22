@@ -349,19 +349,16 @@ describe('File Upload Utilities', () => {
       expect(result).toEqual({})
     })
 
-    it('should create map using available pairs without index bounds checking', () => {
+    it('should throw error when files and digests arrays have different lengths', () => {
       const files = [
         { filepath: MODEL_PATH_1 },
         { filepath: MODEL_PATH_2 },
       ]
-      // Only one digest - the function will access out of bounds on the second iteration
       const blobDigests = [VALID_SHA256_DIGEST]
 
-      const result = createBlobFileMap(files, blobDigests)
-
-      // The function creates entries for both files (may access undefined for second)
-      expect(Object.keys(result)).toHaveLength(2)
-      expect(result['gte-small.Q2_K.gguf']).toBe(VALID_SHA256_DIGEST)
+      expect(() => createBlobFileMap(files, blobDigests)).toThrow(
+        'Mismatch between number of files (2) and blob digests (1)'
+      )
     })
   })
 
