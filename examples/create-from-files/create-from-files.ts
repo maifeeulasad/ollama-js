@@ -1,5 +1,5 @@
 import ollama from 'ollama'
-import path from 'node:path'
+import path from 'path'
 
 // download
 //  - https://huggingface.co/ggml-org/tinygemma3-GGUF/blob/main/tinygemma3-Q8_0.gguf
