@@ -124,26 +124,4 @@ export function createBlobFileMap(
   return fileMap
 }
 
-/**
- * Replaces local file path references in a modelfile with blob digest references.
- * 
- * @param modelfile - The modelfile content
- * @param blobDigests - Array of blob digests to use as replacements
- * @returns The modelfile with blob references
- */
-export function replaceModelfilePathsWithBlobs(
-  modelfile: string,
-  blobDigests: string[]
-): string {
-  let updatedModelfile = modelfile
-  
-  // Replace local file paths with blob references
-  for (const blobDigest of blobDigests) {
-    updatedModelfile = updatedModelfile.replace(
-      new RegExp(`\\.\\/[^\\s]+\\.gguf`, 'i'),
-      `@${blobDigest}`
-    )
-  }
-  
-  return updatedModelfile
-}
+

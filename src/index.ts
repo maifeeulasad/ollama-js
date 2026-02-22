@@ -11,7 +11,6 @@ import {
   isFile, 
   uploadBlob, 
   createBlobFileMap, 
-  replaceModelfilePathsWithBlobs 
 } from './fileUpload.js'
 
 export class Ollama extends OllamaBrowser {
@@ -102,9 +101,6 @@ export class Ollama extends OllamaBrowser {
     const modifiedRequest: Record<string, any> = {
       ...request,
       files: createBlobFileMap(request.files, blobDigests),
-    }
-    if (request.modelfile) {
-      modifiedRequest.modelfile = replaceModelfilePathsWithBlobs(request.modelfile, blobDigests)
     }
 
     return this.processStreamableRequest<ProgressResponse>('create', modifiedRequest)
