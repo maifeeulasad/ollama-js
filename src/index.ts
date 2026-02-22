@@ -6,7 +6,6 @@ import { Ollama as OllamaBrowser } from './browser.js'
 
 import type { CreateRequest, ProgressResponse } from './interfaces.js'
 
-import { parseJSON } from './utils.js'
 import { 
   computeFileSHA256, 
   isFile, 
@@ -99,11 +98,16 @@ export class Ollama extends OllamaBrowser {
     // Upload files as blobs and get their digests
     const blobDigests = await this.uploadFilesAsBlobs(request.files)
 
-    // Build the create request with blob references
-    const createRequest = this.buildCreateRequest(request, blobDigests)
+    // Build the modified request with blob references
+    const modifiedRequest: Record<string, any> = {
+      ...request,
+      files: createBlobFileMap(request.files, blobDigests),
+    }
+    if (request.modelfile) {
+      modifiedRequest.modelfile = replaceModelfilePathsWithBlobs(request.modelfile, blobDigests)
+    }
 
-    // Send the create request to Ollama
-    return this.sendCreateRequest(createRequest, request.stream)
+    return this.processStreamableRequest<ProgressResponse>('create', modifiedRequest)
   }
 
   /**
@@ -136,92 +140,7 @@ export class Ollama extends OllamaBrowser {
     return blobDigests
   }
 
-  /**
-   * Builds the create request object with blob references.
-   */
-  private buildCreateRequest(request: CreateRequest, blobDigests: string[]): any {
-    const createRequest: any = {
-      name: request.model,
-      stream: request.stream,
-    }
 
-    // Add files as blob references (Ollama expects a map of filename -> digest)
-    if (blobDigests.length > 0 && request.files) {
-      createRequest.files = createBlobFileMap(request.files, blobDigests)
-    }
-
-    // Add all optional parameters
-    if (request.modelfile) {
-      createRequest.modelfile = replaceModelfilePathsWithBlobs(request.modelfile, blobDigests)
-    }
-    if (request.from) createRequest.from = request.from
-    if (request.quantize) createRequest.quantize = request.quantize
-    if (request.template) createRequest.template = request.template
-    if (request.license) createRequest.license = request.license
-    if (request.system) createRequest.system = request.system
-    if (request.parameters) createRequest.parameters = request.parameters
-    if (request.messages) createRequest.messages = request.messages
-    if (request.adapters) createRequest.adapters = request.adapters
-
-    return createRequest
-  }
-
-  /**
-   * Sends the create request to Ollama and handles the response.
-   */
-  private async sendCreateRequest(
-    createRequest: any,
-    stream?: boolean
-  ): Promise<ProgressResponse | AbortableAsyncIterator<ProgressResponse>> {
-    const abortController = new AbortController()
-    const host = `${this.config.host}/api/create`
-
-    try {
-      const response = await this.fetch(host, {
-        method: 'POST',
-        body: JSON.stringify(createRequest),
-        headers: {
-          ...this.config.headers,
-          'Content-Type': 'application/json',
-        },
-        signal: abortController.signal,
-      })
-
-      if (!response.ok) {
-        let message = `Error ${response.status}: ${response.statusText}`
-        try {
-          const errorData = await response.json()
-          message = errorData.error || message
-        } catch {
-          // Ignore JSON parse errors
-        }
-        throw new Error(message)
-      }
-
-      if (stream) {
-        if (!response.body) {
-          throw new Error('Missing response body')
-        }
-
-        const itr = parseJSON<ProgressResponse>(response.body)
-        const abortableAsyncIterator = new AbortableAsyncIterator(
-          abortController,
-          itr,
-          () => {
-            // Cleanup if needed
-          },
-        )
-        return abortableAsyncIterator
-      } else {
-        return await response.json() as ProgressResponse
-      }
-    } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw error
-      }
-      throw error
-    }
-  }
 }
 
 export default new Ollama()
