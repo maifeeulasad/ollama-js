@@ -7,7 +7,6 @@ import {
   isFile,
   uploadBlob,
   createBlobFileMap,
-  replaceModelfilePathsWithBlobs,
 } from '../src/fileUpload.js'
 import { CreateRequest, CreateRequestFile } from '../src/interfaces.js'
 
@@ -366,115 +365,6 @@ describe('File Upload Utilities', () => {
     })
   })
 
-  // ============================================================================
-  // replaceModelfilePathsWithBlobs Tests
-  // ============================================================================
-
-  describe('replaceModelfilePathsWithBlobs', () => {
-    // Positive tests
-    it('should replace .gguf file path with blob reference', () => {
-      const modelfile = `FROM ${MODEL_PATH_1}\nSYSTEM "You are helpful."`
-      const blobDigests = [VALID_SHA256_DIGEST]
-
-      const result = replaceModelfilePathsWithBlobs(modelfile, blobDigests)
-
-      expect(result).toBe(`FROM @${VALID_SHA256_DIGEST}\nSYSTEM "You are helpful."`)
-    })
-
-    it('should replace multiple .gguf file paths', () => {
-      const modelfile = `FROM ${MODEL_PATH_1}\nADAPTER ${MODEL_PATH_2}`
-      const blobDigests = [
-        'sha256:1111111111111111111111111111111111111111111111111111111111111111',
-        'sha256:2222222222222222222222222222222222222222222222222222222222222222',
-      ]
-
-      const result = replaceModelfilePathsWithBlobs(modelfile, blobDigests)
-
-      expect(result).toContain('@sha256:1111111111111111111111111111111111111111111111111111111111111111')
-      expect(result).toContain('@sha256:2222222222222222222222222222222222222222222222222222222222222222')
-    })
-
-    it('should handle case-insensitive .gguf extension', () => {
-      const modelfile = `FROM ${MODEL_PATH_UPPERCASE}`
-      const blobDigests = [VALID_SHA256_DIGEST]
-
-      const result = replaceModelfilePathsWithBlobs(modelfile, blobDigests)
-
-      expect(result).toBe(`FROM @${VALID_SHA256_DIGEST}`)
-    })
-
-    it('should handle nested paths', () => {
-      const modelfile = `FROM ${MODEL_PATH_NESTED}`
-      const blobDigests = [VALID_SHA256_DIGEST]
-
-      const result = replaceModelfilePathsWithBlobs(modelfile, blobDigests)
-
-      expect(result).toBe(`FROM @${VALID_SHA256_DIGEST}`)
-    })
-
-    it('should preserve other parts of modelfile', () => {
-      const modelfile = `FROM ${MODEL_PATH_1}
-SYSTEM "You are a helpful assistant."
-PARAMETER temperature 0.7
-PARAMETER top_k 50
-TEMPLATE """{{ .Prompt }}"""
-ADAPTER ${MODEL_PATH_2}`
-      const blobDigests = [VALID_SHA256_DIGEST, `sha256:b${SHA256_LENGTH - 1}`]
-
-      const result = replaceModelfilePathsWithBlobs(modelfile, blobDigests)
-
-      expect(result).toContain('SYSTEM "You are a helpful assistant."')
-      expect(result).toContain('PARAMETER temperature 0.7')
-      expect(result).toContain('PARAMETER top_k 50')
-      expect(result).toContain('TEMPLATE """{{ .Prompt }}"""')
-    })
-
-    // Negative tests
-    it('should not modify modelfile without .gguf paths', () => {
-      const modelfile = 'FROM llama2\nSYSTEM "You are helpful."'
-      const blobDigests = [VALID_SHA256_DIGEST]
-
-      const result = replaceModelfilePathsWithBlobs(modelfile, blobDigests)
-
-      expect(result).toBe(modelfile)
-    })
-
-    it('should not modify modelfile when blob digests array is empty', () => {
-      const modelfile = `FROM ${MODEL_PATH_1}`
-      const blobDigests: string[] = []
-
-      const result = replaceModelfilePathsWithBlobs(modelfile, blobDigests)
-
-      expect(result).toBe(modelfile)
-    })
-
-    it('should only replace first occurrence of each file path', () => {
-      const modelfile = `FROM ${MODEL_PATH_1}
-ADAPTER ${MODEL_PATH_2}
-ANOTHER ${MODEL_PATH_3}`
-      const blobDigests = [
-        'sha256:1111111111111111111111111111111111111111111111111111111111111111',
-        'sha256:2222222222222222222222222222222222222222222222222222222222222222',
-      ]
-
-      const result = replaceModelfilePathsWithBlobs(modelfile, blobDigests)
-
-      // First two should be replaced
-      expect(result).toContain('@sha256:1111111111111111111111111111111111111111111111111111111111111111')
-      expect(result).toContain('@sha256:2222222222222222222222222222222222222222222222222222222222222222')
-      // Third one (MODEL_PATH_3) should remain unchanged
-      expect(result).toContain(MODEL_PATH_3)
-    })
-
-    it('should handle modelfile with no matches gracefully', () => {
-      const modelfile = 'FROM base-model\nSYSTEM "You are helpful."\n# No GGUF files here'
-      const blobDigests = [VALID_SHA256_DIGEST]
-
-      const result = replaceModelfilePathsWithBlobs(modelfile, blobDigests)
-
-      expect(result).toBe(modelfile)
-    })
-  })
 })
 
 // ============================================================================
