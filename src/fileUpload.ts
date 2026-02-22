@@ -108,6 +108,12 @@ export function createBlobFileMap(
   files: Array<{ filepath: string; sha256?: string }>,
   blobDigests: string[]
 ): Record<string, string> {
+  if (files.length !== blobDigests.length) {
+    throw new Error(
+      `Mismatch between number of files (${files.length}) and blob digests (${blobDigests.length})`
+    )
+  }
+
   const fileMap: Record<string, string> = {}
   
   for (let i = 0; i < files.length; i++) {
